@@ -1,0 +1,27 @@
+{
+  "scheduled_time": {
+    "description": "每日问候时间",
+    "type": "string",
+    "default": "22:00",
+    "hint": "格式: HH:MM (如 22:00，24小时制)"
+  },
+  "reply_style": {
+    "description": "回复风格",
+    "type": "enum",
+    "default": "balanced",
+    "enum_values": ["enthusiastic", "balanced", "gentle"],
+    "enum_labels": ["激励型(超燃💪)", "平衡型(推荐✨)", "温柔型(治愈🌙)"]
+  },
+  "max_conversation_rounds": {
+    "description": "最大对话轮数",
+    "type": "int",
+    "default": 3,
+    "hint": "避免过度打扰，建议2-3轮"
+  },
+  "session_timeout": {
+    "description": "对话超时时间(秒)",
+    "type": "int",
+    "default": 60,
+    "hint": "用户无回复的等待时间"
+  }
+}
