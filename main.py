@@ -248,7 +248,7 @@ class AIFriendPlugin(Star):
         import random
         return random.choice(fallback_replies)
 
-    @filter.command("开启陪伴")
+    @filter.command("subscribe", alias={"开启陪伴", "订阅"})
     async def subscribe(self, event: AstrMessageEvent):
         """订阅每日问候"""
         # 获取用户ID
@@ -267,7 +267,7 @@ class AIFriendPlugin(Star):
 
         logger.info(f"[AI Friend] 用户 {user_id} 订阅成功")
 
-    @filter.command("关闭陪伴")
+    @filter.command("unsubscribe", alias={"关闭陪伴", "取消订阅"})
     async def unsubscribe(self, event: AstrMessageEvent):
         """取消订阅每日问候"""
         user_id = event.unified_msg_origin
@@ -285,7 +285,7 @@ class AIFriendPlugin(Star):
 
         logger.info(f"[AI Friend] 用户 {user_id} 取消订阅")
 
-    @filter.command("夸夸我")
+    @filter.command("praise", alias={"夸夸我", "夸我"})
     async def praise_me(self, event: AstrMessageEvent):
         """手动触发夸夸对话"""
         yield event.plain_result("今天做了什么想和我分享的吗？")
@@ -293,7 +293,7 @@ class AIFriendPlugin(Star):
         # 启动对话会话
         await self._start_conversation(event)
 
-    @filter.command("今日总结")
+    @filter.command("summary", alias={"今日总结", "总结"})
     async def daily_summary(self, event: AstrMessageEvent):
         """今日总结（夸夸我的别名）"""
         yield event.plain_result("来说说今天的收获吧，哪怕是很小的一件事~")
