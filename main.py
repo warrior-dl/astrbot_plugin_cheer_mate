@@ -18,11 +18,11 @@ from astrbot.core.utils.session_waiter import session_waiter, SessionController
 
 
 @register(
-    "AI Friend - 陪伴机器人",
-    "AI Friend Team",
-    "一个温暖的陪伴插件，在你焦虑时无条件肯定你。每天晚上主动问候，通过AI高情商回复提供情绪价值。",
+    "陪伴夸夸机器人",
+    "warrior-dl",
+    "一个温暖的陪伴插件，在你焦虑时无条件肯定你。每天晚上主动问候，通过AI回复提供情绪价值。",
     "0.1.0",
-    "https://github.com/yourusername/ai-friend"
+    "https://github.com/warrior-dl/ai-friend.git"
 )
 class AIFriendPlugin(Star):
     """AI陪伴机器人插件"""
