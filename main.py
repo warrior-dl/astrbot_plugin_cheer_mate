@@ -47,11 +47,15 @@ class AIFriendPlugin(Star):
         logger.info(f"[AI Friend] 插件初始化完成")
         logger.info(f"[AI Friend] 配置: 推送时间={self.scheduled_time}")
 
+    async def initialize(self):
+        """初始化插件，启动定时任务"""
         # 加载订阅列表
-        asyncio.create_task(self._load_subscribers())
-
-        # 启动定时任务
-        asyncio.create_task(self._start_scheduler())
+        await self._load_subscribers()
+        
+        # 启动定时任务（保存任务引用）
+        self.scheduler_task = asyncio.create_task(self._start_scheduler())
+        
+        logger.info(f"[AI Friend] 插件启动成功，已加载 {len(self.subscribers)} 个订阅用户")
 
     async def _load_subscribers(self):
         """从存储加载订阅用户列表"""
@@ -364,3 +368,19 @@ class AIFriendPlugin(Star):
             logger.error(f"[AI Friend] 对话异常: {e}")
             error_msg = "抱歉，遇到了一些问题... 你可以稍后再试试~"
             await event.send(event.plain_result(error_msg))
+
+    async def terminate(self):
+        """插件卸载时的清理方法（AstrBot 标准生命周期方法）"""
+        logger.info(f"[AI Friend] 开始清理插件资源...")
+        
+        # 取消定时任务
+        if self.scheduler_task and not self.scheduler_task.done():
+            self.scheduler_task.cancel()
+            try:
+                await self.scheduler_task
+            except asyncio.CancelledError:
+                logger.info(f"[AI Friend] 定时任务已取消")
+            except Exception as e:
+                logger.error(f"[AI Friend] 取消定时任务时出错: {e}")
+        
+        logger.info(f"[AI Friend] 插件资源清理完成")
