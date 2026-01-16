@@ -22,7 +22,7 @@ from astrbot.core.utils.session_waiter import session_waiter, SessionController
     "warrior-dl",
     "一个温暖的陪伴插件，在你焦虑时无条件肯定你。每天晚上主动问候，通过AI回复提供情绪价值。",
     "0.1.0",
-    "https://github.com/warrior-dl/astrbot_plugin_cheer_mate.git"
+    "https://github.com/warrior-dl/astrbot_plugin_cheer_mate"
 )
 class AIFriendPlugin(Star):
     """AI陪伴机器人插件"""
