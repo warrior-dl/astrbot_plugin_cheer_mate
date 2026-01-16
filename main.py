@@ -4,6 +4,8 @@ AI Friend - 陪伴机器人插件
 """
 import os
 import asyncio
+import json
+import random
 from datetime import datetime, time
 from pathlib import Path
 from typing import Dict, Set
@@ -129,31 +131,18 @@ class AIFriendPlugin(Star):
 
         logger.info(f"[AI Friend] 开始向 {len(self.subscribers)} 个用户推送问候")
 
-        # 问候语列表（随机选择）
-        greetings = [
-            "嘿，今天感觉怎么样？有没有做什么让你觉得还不错的事？哪怕很小的一件~",
-            "今天辛苦啦！有什么想和我分享的吗？",
-            "嘿！今天有什么小成就想告诉我吗？",
-            "忙了一天了，今天有没有哪怕一件微不足道的小事让你觉得还不错？",
-        ]
-
-        import random
-        greeting = random.choice(greetings)
-
         # 向每个订阅用户推送
         success_count = 0
         for user_id in list(self.subscribers):
             try:
+                # 生成个性化问候语（基于历史对话）
+                greeting = await self._generate_personalized_greeting(user_id)
+
                 # 构建消息链
                 chain = MessageChain().message(greeting)
 
-                # 发送消息（私聊）
-                # 这里需要构建 unified_msg_origin
-                # 格式: platform_type:user_id
-                umo_str = user_id
-
                 # 发送消息
-                await self.context.send_message(umo_str, chain)
+                await self.context.send_message(user_id, chain)
                 success_count += 1
                 logger.info(f"[AI Friend] 成功推送给用户: {user_id}")
 
@@ -164,6 +153,95 @@ class AIFriendPlugin(Star):
                 logger.error(f"[AI Friend] 推送给 {user_id} 失败: {e}")
 
         logger.info(f"[AI Friend] 推送完成: 成功 {success_count}/{len(self.subscribers)}")
+
+    async def _generate_personalized_greeting(self, user_id: str) -> str:
+        """
+        基于历史对话生成个性化问候语
+
+        Args:
+            user_id: 用户ID (unified_msg_origin格式)
+
+        Returns:
+            个性化问候语文本
+        """
+        try:
+            # 1. 获取对话历史
+            conv_mgr = self.context.conversation_manager
+            curr_cid = await conv_mgr.get_curr_conversation_id(user_id)
+            conversation = await conv_mgr.get_conversation(user_id, curr_cid)
+
+            if not conversation or not conversation.history:
+                # 新用户或无历史，使用默认问候语
+                logger.info(f"[AI Friend] 用户 {user_id} 无历史记录，使用默认问候语")
+                return self._get_default_greeting()
+
+            # 2. 解析历史记录
+            messages = json.loads(conversation.history)
+
+            if not messages:
+                logger.info(f"[AI Friend] 用户 {user_id} 历史为空，使用默认问候语")
+                return self._get_default_greeting()
+
+            # 3. 只取最近 3-5 条对话（最近3轮）
+            recent_messages = messages[-6:] if len(messages) >= 6 else messages
+
+            # 4. 构建历史文本
+            history_text = ""
+            for msg in recent_messages:
+                role = "用户" if msg.get("role") == "user" else "你"
+                content = msg.get("content", "")
+                history_text += f"{role}: {content}\n"
+
+            # 5. 构建 Prompt
+            prompt = f"""你是温暖的陪伴机器人"小确幸"。
+现在是每日问候时间（{self.scheduled_time}）。
+
+【最近的对话记录】
+{history_text}
+
+【任务】
+基于上面的对话历史，生成一句自然的问候语（1-2句话）：
+1. 可以提及之前聊过的话题，但不要过于具体
+2. 保持温暖、轻松的语气
+3. 引导用户分享今天的事情
+
+请直接输出问候语，不要任何前缀或解释："""
+
+            # 6. 调用 LLM 生成
+            provider_id = await self.context.get_current_chat_provider_id(user_id)
+
+            if not provider_id:
+                logger.warning(f"[AI Friend] 无法获取用户 {user_id} 的 provider_id，使用默认问候语")
+                return self._get_default_greeting()
+
+            logger.info(f"[AI Friend] 正在为用户 {user_id} 生成个性化问候语...")
+            llm_resp = await self.context.llm_generate(
+                chat_provider_id=provider_id,
+                prompt=prompt,
+                timeout=30
+            )
+
+            if llm_resp and llm_resp.completion_text:
+                personalized_greeting = llm_resp.completion_text.strip()
+                logger.info(f"[AI Friend] 个性化问候语生成成功")
+                return personalized_greeting
+            else:
+                logger.warning(f"[AI Friend] LLM 返回空回复，使用默认问候语")
+                return self._get_default_greeting()
+
+        except Exception as e:
+            logger.error(f"[AI Friend] 生成个性化问候语失败: {e}")
+            return self._get_default_greeting()
+
+    def _get_default_greeting(self) -> str:
+        """获取默认问候语（随机选择）"""
+        greetings = [
+            "嘿，今天感觉怎么样？有没有做什么让你觉得还不错的事？哪怕很小的一件~",
+            "今天辛苦啦！有什么想和我分享的吗？",
+            "嘿！今天有什么小成就想告诉我吗？",
+            "忙了一天了，今天有没有哪怕一件微不足道的小事让你觉得还不错？",
+        ]
+        return random.choice(greetings)
 
     async def _load_prompt_template(self, style: str) -> str:
         """加载指定风格的 Prompt 模板"""
@@ -188,6 +266,7 @@ class AIFriendPlugin(Star):
 2. 价值重构：将"小事"重新定义为"进步"
 3. 具体化鼓励：使用数字、对比、具体场景让肯定更有力量
 4. 给予许可：明确告诉用户"你已经做得很好了，可以安心休息"
+5. 提出建议：在合适的场景下，提出积极向上的建议
 
 【回复风格】
 - 语气：温暖、真诚、略带俏皮
@@ -343,9 +422,8 @@ class AIFriendPlugin(Star):
         try:
             await conversation_handler(event)
         except asyncio.TimeoutError:
-            # 超时处理
-            timeout_msg = "如果累了就早点睡，晚安！🌙"
-            await event.send(event.plain_result(timeout_msg))
+            # 超时静默结束，不发送消息
+            logger.info(f"[AI Friend] 对话超时，静默结束")
         except Exception as e:
             logger.error(f"[AI Friend] 对话异常: {e}")
             error_msg = "抱歉，遇到了一些问题... 你可以稍后再试试~"
