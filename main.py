@@ -32,17 +32,11 @@ class AIFriendPlugin(Star):
 
         # 读取配置
         self.scheduled_time = config.get("scheduled_time", "22:00")
-
-        # 验证回复风格
-        reply_style = config.get("reply_style", "balanced")
-        valid_styles = ["enthusiastic", "balanced", "gentle"]
-        if reply_style not in valid_styles:
-            logger.warning(f"[AI Friend] 无效的回复风格 '{reply_style}'，使用默认值 'balanced'")
-            reply_style = "balanced"
-        self.reply_style = reply_style
-
-        self.max_rounds = config.get("max_conversation_rounds", 3)
         self.session_timeout = config.get("session_timeout", 60)
+
+        # 读取自定义提示词
+        self.greeting_prompt = config.get("greeting_prompt", "")
+        self.praise_prompt = config.get("praise_prompt", "")
 
         # 订阅用户列表（用户ID集合）
         self.subscribers: Set[str] = set()
@@ -50,12 +44,8 @@ class AIFriendPlugin(Star):
         # 定时任务
         self.scheduler_task = None
 
-        # Prompt 模板路径
-        self.plugin_dir = Path(__file__).parent
-        self.prompts_dir = self.plugin_dir / "prompts"
-
         logger.info(f"[AI Friend] 插件初始化完成")
-        logger.info(f"[AI Friend] 配置: 推送时间={self.scheduled_time}, 风格={self.reply_style}")
+        logger.info(f"[AI Friend] 配置: 推送时间={self.scheduled_time}")
 
         # 加载订阅列表
         asyncio.create_task(self._load_subscribers())
@@ -192,20 +182,11 @@ class AIFriendPlugin(Star):
                 content = msg.get("content", "")
                 history_text += f"{role}: {content}\n"
 
-            # 5. 构建 Prompt
-            prompt = f"""你是温暖的陪伴机器人"小确幸"。
-现在是每日问候时间（{self.scheduled_time}）。
-
-【最近的对话记录】
-{history_text}
-
-【任务】
-基于上面的对话历史，生成一句自然的问候语（1-2句话）：
-1. 可以提及之前聊过的话题，但不要过于具体
-2. 保持温暖、轻松的语气
-3. 引导用户分享今天的事情
-
-请直接输出问候语，不要任何前缀或解释："""
+            # 5. 构建 Prompt（直接使用配置中的提示词）
+            prompt = self.greeting_prompt.format(
+                scheduled_time=self.scheduled_time,
+                history_text=history_text
+            )
 
             # 6. 调用 LLM 生成
             provider_id = await self.context.get_current_chat_provider_id(user_id)
@@ -243,42 +224,6 @@ class AIFriendPlugin(Star):
         ]
         return random.choice(greetings)
 
-    async def _load_prompt_template(self, style: str) -> str:
-        """加载指定风格的 Prompt 模板"""
-        try:
-            prompt_file = self.prompts_dir / f"{style}.txt"
-            if prompt_file.exists():
-                with open(prompt_file, 'r', encoding='utf-8') as f:
-                    return f.read()
-            else:
-                logger.warning(f"[AI Friend] Prompt 文件不存在: {prompt_file}，使用默认模板")
-                return self._get_default_prompt()
-        except Exception as e:
-            logger.error(f"[AI Friend] 加载 Prompt 失败: {e}")
-            return self._get_default_prompt()
-
-    def _get_default_prompt(self) -> str:
-        """获取默认 Prompt 模板"""
-        return """你是一个温暖、无条件支持用户的陪伴机器人"小确幸"。
-
-【核心原则】
-1. 无条件肯定：无论用户说做了什么，都要找到值得肯定的点
-2. 价值重构：将"小事"重新定义为"进步"
-3. 具体化鼓励：使用数字、对比、具体场景让肯定更有力量
-4. 给予许可：明确告诉用户"你已经做得很好了，可以安心休息"
-5. 提出建议：在合适的场景下，提出积极向上的建议
-
-【回复风格】
-- 语气：温暖、真诚、略带俏皮
-- 长度：2-3句话
-- 结构：肯定 + 重构 + 许可
-
-现在，用户对你说：
-
-"{user_input}"
-
-请给出你的回复（2-3句话，温暖且具体）："""
-
     async def _generate_praise_reply(self, user_input: str, event: AstrMessageEvent) -> str:
         """
         生成夸夸回复
@@ -291,11 +236,8 @@ class AIFriendPlugin(Star):
             AI生成的回复文本
         """
         try:
-            # 加载 Prompt 模板
-            prompt_template = await self._load_prompt_template(self.reply_style)
-
-            # 填充用户输入
-            prompt = prompt_template.replace("{user_input}", user_input)
+            # 构建 Prompt（直接使用配置中的提示词）
+            prompt = self.praise_prompt.format(user_input=user_input)
 
             # 获取当前聊天的 provider_id
             umo = event.unified_msg_origin
@@ -381,13 +323,12 @@ class AIFriendPlugin(Star):
         # 启动对话会话
         await self._start_conversation(event)
 
-    async def _start_conversation(self, event: AstrMessageEvent, round_count: int = 1):
+    async def _start_conversation(self, event: AstrMessageEvent):
         """
         启动对话会话
 
         Args:
             event: 消息事件
-            round_count: 当前轮数
         """
         @session_waiter(timeout=self.session_timeout, record_history_chains=False)
         async def conversation_handler(controller: SessionController, event: AstrMessageEvent):
@@ -404,13 +345,6 @@ class AIFriendPlugin(Star):
             # 生成AI回复
             ai_reply = await self._generate_praise_reply(user_input, event)
             await event.send(event.plain_result(ai_reply))
-
-            # 检查是否达到最大轮数
-            if round_count >= self.max_rounds:
-                final_msg = "今天的分享就到这里吧，你已经很棒了！早点休息，明天见~ ✨"
-                await event.send(event.plain_result(final_msg))
-                controller.stop()
-                return
 
             # 继续对话
             follow_up = "还有其他想分享的吗？"

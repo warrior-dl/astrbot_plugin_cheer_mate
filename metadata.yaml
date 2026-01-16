@@ -1,5 +1,5 @@
-name: astrbot_plugin_ai_friend - 陪伴机器人
-description: 一个温暖的陪伴插件，在你焦虑时无条件肯定你。每天晚上主动问候，通过AI高情商回复提供情绪价值。
+name: 陪伴夸夸机器人
+description: 一个温暖的陪伴插件，在你焦虑时无条件肯定你。每天晚上主动问候，通过AI回复提供情绪价值。
 version: v0.1.0
-author: AI Friend Team
-repo: https://github.com/yourusername/ai-friend
+author: warrior-dl
+repo: https://github.com/warrior-dl/ai-friend.git
