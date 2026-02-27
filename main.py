@@ -21,7 +21,7 @@ from astrbot.core.utils.session_waiter import session_waiter, SessionController
     "CheerMate - 陪伴夸夸机器人",
     "warrior-dl",
     "一个温暖的陪伴插件，在你焦虑时无条件肯定你。每天晚上主动问候，通过AI回复提供情绪价值。",
-    "0.1.0",
+    "0.1.1",
     "https://github.com/warrior-dl/astrbot_plugin_cheer_mate"
 )
 class CheerMatePlugin(Star):
@@ -356,6 +356,24 @@ class CheerMatePlugin(Star):
 
         # 启动对话会话
         await self._start_conversation(event)
+
+    @filter.command("clear_history", alias={"清空历史", "重置对话"})
+    async def clear_history(self, event: AstrMessageEvent):
+        """清空当前用户的对话历史（修改 prompt 配置后使用）"""
+        user_id = event.unified_msg_origin
+
+        try:
+            conv_mgr = self.context.conversation_manager
+            curr_cid = await conv_mgr.get_curr_conversation_id(user_id)
+            await conv_mgr.clear_conversation(user_id, curr_cid)
+
+            reply = "对话历史已清空！✨\n下次对话将使用最新的 prompt 配置。"
+            yield event.plain_result(reply)
+            logger.info(f"[CheerMate] 用户 {user_id} 清空了对话历史")
+
+        except Exception as e:
+            logger.error(f"[CheerMate] 清空对话历史失败: {e}")
+            yield event.plain_result("清空失败，请稍后重试~")
 
     async def _start_conversation(self, event: AstrMessageEvent):
         """
