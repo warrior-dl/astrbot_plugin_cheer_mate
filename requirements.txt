@@ -1,0 +1,4 @@
+# AstrBot AI Friend Plugin Requirements
+# Most dependencies are provided by AstrBot core
+
+# No additional requirements needed for MVP
