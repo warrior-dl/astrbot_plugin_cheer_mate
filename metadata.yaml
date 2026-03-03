@@ -4,3 +4,4 @@ description: 一个温暖的陪伴插件，在你焦虑时无条件肯定你。�
 version: v0.2.0
 author: warrior-dl
 repo: https://github.com/warrior-dl/astrbot_plugin_cheer_mate
+require_astrbot_version: v4.5.7
