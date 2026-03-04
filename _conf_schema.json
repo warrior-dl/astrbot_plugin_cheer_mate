@@ -11,12 +11,6 @@
     "default": 60,
     "hint": "用户无回复的等待时间"
   },
-  "persona_id": {
-    "description": "每日问候使用的人格 ID",
-    "type": "string",
-    "default": "",
-    "hint": "留空则自动使用用户会话关联的人格。可在 AstrBot WebUI 的「人格管理」页面查看人格 ID"
-  },
   "greeting_prompt": {
     "description": "每日问候任务指令",
     "type": "text",

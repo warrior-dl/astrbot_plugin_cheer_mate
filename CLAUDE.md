@@ -146,7 +146,7 @@ async def conversation_handler(controller: SessionController, event: AstrMessage
 The `active_agent` cron job automatically:
 1. Loads user's conversation via `_get_session_conv`
 2. Injects conversation history into context
-3. Loads persona via `_ensure_persona_and_skills` (from conversation's `persona_id` or global default)
+3. Loads persona via `_ensure_persona_and_skills` (global default)
 
 Therefore, `greeting_prompt` should only describe the task ("what to do"), not the persona ("who to be"). Persona is configured in AstrBot's persona management UI.
 
