@@ -18,7 +18,7 @@ from astrbot.core.utils.session_waiter import session_waiter, SessionController
     "CheerMate - 陪伴夸夸机器人",
     "warrior-dl",
     "一个温暖的陪伴插件，在你焦虑时无条件肯定你。每天晚上主动问候，通过AI回复提供情绪价值。",
-    "0.2.1",
+    "0.2.2",
     "https://github.com/warrior-dl/astrbot_plugin_cheer_mate"
 )
 class CheerMatePlugin(Star):
@@ -171,7 +171,17 @@ class CheerMatePlugin(Star):
         Returns:
             任务指令文本
         """
-        return self.greeting_prompt.format(scheduled_time=self.scheduled_time)
+        try:
+            return self.greeting_prompt.format(scheduled_time=self.scheduled_time)
+        except KeyError as e:
+            logger.warning(f"[CheerMate] greeting_prompt 包含未知占位符 {e}，已忽略")
+            # 使用 format_map 忽略未知占位符
+            class SafeDict(dict):
+                def __missing__(self, key):
+                    return "{" + key + "}"
+            return self.greeting_prompt.format_map(
+                SafeDict(scheduled_time=self.scheduled_time)
+            )
 
     async def _build_payload(self, user_id: str) -> dict:
         """构建定时任务的 payload"""
